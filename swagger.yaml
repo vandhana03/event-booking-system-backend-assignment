@@ -7,9 +7,7 @@ info:
     attendance. All responses wrap data in a `success` + `data` / `error`
     envelope for consistency.
 
-servers:
-  - url: http://localhost:3000/api
-    description: Local development server
+
 
 tags:
   - name: Events
