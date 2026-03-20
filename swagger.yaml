@@ -1,0 +1,440 @@
+openapi: 3.0.0
+info:
+  title: Event Booking API
+  version: 1.0.0
+  description: >
+    Mini Event Management System — browse events, book tickets, and manage
+    attendance. All responses wrap data in a `success` + `data` / `error`
+    envelope for consistency.
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+
+tags:
+  - name: Events
+    description: Manage events
+  - name: Bookings
+    description: Ticket booking operations
+  - name: Users
+    description: User-related queries
+  - name: Attendance
+    description: Event attendance tracking
+
+components:
+  schemas:
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Tech Conference 2026"
+        description:
+          type: string
+          example: "Annual technology conference covering AI, cloud, and more."
+        date:
+          type: string
+          format: date-time
+          example: "2026-04-15T09:00:00.000Z"
+        total_capacity:
+          type: integer
+          example: 200
+        remaining_tickets:
+          type: integer
+          example: 150
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        booking_code:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        booking_date:
+          type: string
+          format: date-time
+          example: "2026-03-20T12:00:00.000Z"
+        event_title:
+          type: string
+          example: "Tech Conference 2026"
+        event_date:
+          type: string
+          format: date-time
+          example: "2026-04-15T09:00:00.000Z"
+        description:
+          type: string
+          example: "Annual technology conference covering AI, cloud, and more."
+
+    Attendee:
+      type: object
+      properties:
+        user_name:
+          type: string
+          example: "Alice Smith"
+        user_email:
+          type: string
+          example: "alice@example.com"
+        booking_code:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        booking_date:
+          type: string
+          format: date-time
+        event_title:
+          type: string
+          example: "Tech Conference 2026"
+
+    SuccessEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+
+    ErrorEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Descriptive error message"
+
+paths:
+  /events:
+    get:
+      tags: [Events]
+      summary: List all upcoming events
+      description: Returns all events whose date is in the future, ordered by date ascending.
+      responses:
+        "200":
+          description: List of upcoming events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Event"
+              example:
+                success: true
+                data:
+                  - id: 1
+                    title: "Tech Conference 2026"
+                    description: "Annual tech event"
+                    date: "2026-04-15T09:00:00.000Z"
+                    total_capacity: 200
+                    remaining_tickets: 150
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+    post:
+      tags: [Events]
+      summary: Create a new event
+      description: Creates a new event with the given details. `remaining_tickets` is automatically set to `capacity`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, date, capacity]
+              properties:
+                title:
+                  type: string
+                  example: "Tech Conference 2026"
+                description:
+                  type: string
+                  example: "An awesome annual event."
+                date:
+                  type: string
+                  format: date-time
+                  example: "2026-04-15T09:00:00.000Z"
+                capacity:
+                  type: integer
+                  minimum: 1
+                  example: 200
+      responses:
+        "201":
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Event created successfully"
+                  eventId:
+                    type: integer
+                    example: 5
+        "400":
+          description: Validation error — missing or invalid fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              examples:
+                missingField:
+                  summary: Missing required field
+                  value:
+                    success: false
+                    error: "title, date, and capacity are required fields"
+                invalidCapacity:
+                  summary: Invalid capacity
+                  value:
+                    success: false
+                    error: "capacity must be a positive number"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /bookings:
+    post:
+      tags: [Bookings]
+      summary: Book a ticket for an event
+      description: >
+        Books a ticket for a user. Checks ticket availability atomically using
+        a MySQL transaction with `SELECT … FOR UPDATE` to prevent race conditions.
+        Returns a unique booking code upon success.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, event_id]
+              properties:
+                user_id:
+                  type: integer
+                  example: 1
+                event_id:
+                  type: integer
+                  example: 2
+      responses:
+        "201":
+          description: Ticket booked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Ticket booked successfully"
+                  booking_code:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  event:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 2
+                      title:
+                        type: string
+                        example: "Tech Conference 2026"
+                      date:
+                        type: string
+                        format: date-time
+        "400":
+          description: Validation error or no tickets available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              examples:
+                missingField:
+                  summary: Missing fields
+                  value:
+                    success: false
+                    error: "user_id and event_id are required fields"
+                noTickets:
+                  summary: Sold out
+                  value:
+                    success: false
+                    error: "No tickets available for this event"
+        "404":
+          description: Event or user not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              examples:
+                eventNotFound:
+                  summary: Event not found
+                  value:
+                    success: false
+                    error: "Event not found"
+                userNotFound:
+                  summary: User not found
+                  value:
+                    success: false
+                    error: "User not found"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{id}/bookings:
+    get:
+      tags: [Users]
+      summary: Get all bookings for a specific user
+      description: Retrieves all bookings made by the given user, joined with event details.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The user's ID
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "200":
+          description: List of bookings for the user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Booking"
+              example:
+                success: true
+                data:
+                  - id: 1
+                    booking_code: "550e8400-e29b-41d4-a716-446655440000"
+                    booking_date: "2026-03-20T12:00:00.000Z"
+                    event_title: "Tech Conference 2026"
+                    event_date: "2026-04-15T09:00:00.000Z"
+                    description: "Annual tech event"
+        "400":
+          description: Invalid user id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                success: false
+                error: "User not found"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /events/{id}/attendance:
+    post:
+      tags: [Attendance]
+      summary: Mark attendance for an event using a booking code
+      description: >
+        Validates the booking code against the event, records attendance, and
+        returns how many total tickets have been booked for the event.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The event's ID
+          schema:
+            type: integer
+            example: 2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  format: uuid
+                  description: The unique booking code issued at time of booking
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "200":
+          description: Attendance marked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Attendance marked successfully"
+                  attendee:
+                    $ref: "#/components/schemas/Attendee"
+                  total_tickets_booked:
+                    type: integer
+                    description: Total number of tickets booked for this event
+                    example: 47
+        "400":
+          description: Validation error — missing booking code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                success: false
+                error: "booking code (code) is required"
+        "404":
+          description: Invalid booking code for this event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                success: false
+                error: "Invalid booking code for this event"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"

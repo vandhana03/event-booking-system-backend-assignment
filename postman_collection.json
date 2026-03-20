@@ -1,0 +1,210 @@
+{
+  "info": {
+    "name": "Event Booking API",
+    "description": "Mini Event Management System — Node.js + MySQL",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "event-booking-api-v1"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "GET /events — List Upcoming Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"]
+            },
+            "description": "Returns all upcoming events (date >= now), ordered by date."
+          },
+          "response": [
+            {
+              "name": "200 OK — Events list",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"Tech Conference 2026\",\n      \"description\": \"Annual tech conference\",\n      \"date\": \"2026-04-15T09:00:00.000Z\",\n      \"total_capacity\": 200,\n      \"remaining_tickets\": 150\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST /events — Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Tech Conference 2026\",\n  \"description\": \"Annual technology conference covering AI, cloud, and more.\",\n  \"date\": \"2026-04-15T09:00:00Z\",\n  \"capacity\": 200\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"]
+            },
+            "description": "Creates a new event. remaining_tickets is set equal to capacity."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Event created successfully\",\n  \"eventId\": 1\n}"
+            },
+            {
+              "name": "400 Bad Request — Missing fields",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error\": \"title, date, and capacity are required fields\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "POST /bookings — Book a Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"event_id\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            },
+            "description": "Books a ticket. Uses SELECT FOR UPDATE to prevent race conditions. Returns a unique booking code (UUID)."
+          },
+          "response": [
+            {
+              "name": "201 Created — Booked",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Ticket booked successfully\",\n  \"booking_code\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"event\": {\n    \"id\": 1,\n    \"title\": \"Tech Conference 2026\",\n    \"date\": \"2026-04-15T09:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request — Sold out",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error\": \"No tickets available for this event\"\n}"
+            },
+            {
+              "name": "404 Not Found — Event not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Event not found\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "GET /users/:id/bookings — Get User Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/1/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1", "bookings"]
+            },
+            "description": "Returns all bookings for the given user, joined with event details."
+          },
+          "response": [
+            {
+              "name": "200 OK — Bookings list",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"booking_code\": \"550e8400-e29b-41d4-a716-446655440000\",\n      \"booking_date\": \"2026-03-20T12:00:00.000Z\",\n      \"event_title\": \"Tech Conference 2026\",\n      \"event_date\": \"2026-04-15T09:00:00.000Z\",\n      \"description\": \"Annual tech conference\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "404 Not Found — User not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error\": \"User not found\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "POST /events/:id/attendance — Mark Attendance",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"550e8400-e29b-41d4-a716-446655440000\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events/1/attendance",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "1", "attendance"]
+            },
+            "description": "Validates booking code against the event, records attendance entry time, and returns attendee info + total tickets booked count for the event."
+          },
+          "response": [
+            {
+              "name": "200 OK — Attendance marked",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Attendance marked successfully\",\n  \"attendee\": {\n    \"user_name\": \"Alice Smith\",\n    \"user_email\": \"alice@example.com\",\n    \"booking_code\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"booking_date\": \"2026-03-20T12:00:00.000Z\",\n    \"event_title\": \"Tech Conference 2026\"\n  },\n  \"total_tickets_booked\": 47\n}"
+            },
+            {
+              "name": "400 Bad Request — Missing code",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error\": \"booking code (code) is required\"\n}"
+            },
+            {
+              "name": "404 Not Found — Invalid code",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Invalid booking code for this event\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
