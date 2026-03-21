@@ -10,7 +10,10 @@ const YAML = require("yamljs");
 
 app.use(cors());
 app.use(express.json());
+
+// Mount the routes with and without the '/api' prefix to prevent 404 errors
 app.use("/api", routes);
+app.use("/", routes);
 
 const swaggerDoc = YAML.load("./swagger.yaml");
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDoc));

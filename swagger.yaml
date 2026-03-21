@@ -9,6 +9,10 @@ info:
 
 
 
+servers:
+  - url: /api
+    description: Local API server
+
 tags:
   - name: Events
     description: Manage events
