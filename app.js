@@ -15,6 +15,11 @@ app.use("/api", routes);
 const swaggerDoc = YAML.load("./swagger.yaml");
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDoc));
 
+// Base route for health checks and pointing users to API docs
+app.get("/", (req, res) => {
+  res.redirect("/api-docs");
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ success: false, error: "Route not found" });
